@@ -86,6 +86,24 @@ nav{background:var(--white);padding:14px 32px;display:flex;align-items:center;ju
 .btn-cta{background:var(--yellow);color:var(--black);border:none;padding:18px 52px;border-radius:10px;font-family:'Barlow',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:all 0.2s;text-decoration:none;display:inline-block;text-transform:uppercase;letter-spacing:0.04em;}
 .btn-cta:hover{transform:translateY(-3px);box-shadow:0 12px 44px rgba(245,230,66,0.4);}
 .cta-note{margin-top:14px;font-size:12px;color:#555;}
+
+/* LEAD MODAL */
+.lead-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px;}
+.lead-modal-box{background:var(--white);border-radius:var(--radius);padding:40px;max-width:440px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.35);animation:fadeUp 0.3s ease;}
+.lead-modal-title{font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;font-weight:900;text-transform:uppercase;letter-spacing:-0.01em;margin-bottom:6px;}
+.lead-modal-sub{font-size:14px;color:var(--gray);margin-bottom:24px;line-height:1.55;}
+.lead-form-row{display:flex;gap:10px;}
+.lead-form-row .lead-form-group{flex:1;}
+.lead-form-group{margin-bottom:10px;}
+.lead-form-group input{width:100%;padding:13px 15px;border:1.5px solid #DDDDD8;border-radius:10px;font-family:'Barlow',sans-serif;font-size:14px;color:var(--black);background:var(--bg);outline:none;transition:border-color 0.2s;}
+.lead-form-group input:focus{border-color:var(--black);background:var(--white);}
+.lead-form-group input::placeholder{color:#bbb;}
+.lead-submit-btn{width:100%;background:var(--yellow);color:var(--black);border:none;padding:16px;border-radius:10px;font-family:'Barlow',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-top:6px;transition:all 0.2s;text-transform:uppercase;letter-spacing:0.04em;}
+.lead-submit-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(245,230,66,0.45);}
+.lead-submit-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none;box-shadow:none;}
+.lead-skip{text-align:center;margin-top:12px;font-size:12px;color:#aaa;}
+.lead-skip a{color:#aaa;text-decoration:underline;cursor:pointer;}
+.lead-error{color:#e53e3e;font-size:13px;margin-top:6px;display:none;text-align:center;}
 </style>
 </head>
 <body>
@@ -162,9 +180,28 @@ nav{background:var(--white);padding:14px 32px;display:flex;align-items:center;ju
       <h2 class="cta-title">Tu asesor te está<br><span class="hl">esperando</span></h2>
       <p class="cta-sub">Ya tenemos todo lo que necesitamos. Elegí un horario y en 30 minutos te orientamos sobre tu próximo paso en tech.</p>
       <div class="summary-pills" id="summary-pills"></div>
-      <a href="#" class="btn-cta" id="cta-final-btn" target="_blank">Agendar llamada &rarr;</a>
+      <a href="#" class="btn-cta" id="cta-final-btn" onclick="openLeadModal(buildMeetingURL()); return false;">Agendar llamada &rarr;</a>
       <p class="cta-note">Sin compromiso &middot; 30 minutos &middot; Online &middot; Gratis</p>
     </div>
+  </div>
+</div>
+
+<!-- Modal de captura de datos para HubSpot -->
+<div id="lead-modal" class="lead-modal-overlay" style="display:none;" onclick="if(event.target===this)closeLeadModal()">
+  <div class="lead-modal-box">
+    <h3 class="lead-modal-title">Un paso antes de agendar</h3>
+    <p class="lead-modal-sub">Dejanos tus datos para conectarte con el asesor correcto.</p>
+    <form id="lead-form" onsubmit="submitLeadForm(event)">
+      <div class="lead-form-row">
+        <div class="lead-form-group"><input type="text" id="lead-firstname" placeholder="Nombre *" required></div>
+        <div class="lead-form-group"><input type="text" id="lead-lastname" placeholder="Apellido *" required></div>
+      </div>
+      <div class="lead-form-group"><input type="email" id="lead-email" placeholder="Email *" required></div>
+      <div class="lead-form-group"><input type="tel" id="lead-phone" placeholder="Teléfono (ej: +54 11 1234-5678)"></div>
+      <p id="lead-error" class="lead-error">Hubo un error, pero podés continuar igual.</p>
+      <button type="submit" class="lead-submit-btn" id="lead-submit-btn">Continuar y agendar →</button>
+    </form>
+    <p class="lead-skip"><a href="#" onclick="skipAndRedirect(); return false;">Continuar sin dejar mis datos</a></p>
   </div>
 </div>
 
@@ -185,6 +222,65 @@ function buildMeetingURL() {
   var params = [];
   for (var k in utms) { if (utms[k]) params.push(k + '=' + encodeURIComponent(utms[k])); }
   return params.length ? base + '&' + params.join('&') : base;
+}
+
+// ─── Configuración HubSpot ───────────────────────────────────────────────────
+// 1. Reemplazá estos valores con los de tu cuenta HubSpot
+// 2. Creá un formulario en HubSpot con los campos: firstname, lastname, email, phone
+// 3. Configurá un Workflow en HubSpot que cree un deal en etapa "Reunión Agendada"
+//    cuando se envíe este formulario
+var HS_PORTAL_ID = 'TU_PORTAL_ID';   // Ej: '12345678'
+var HS_FORM_ID   = 'TU_FORM_ID';     // UUID del formulario en HubSpot
+// ─────────────────────────────────────────────────────────────────────────────
+
+var _pendingMeetingURL = '';
+
+function openLeadModal(url) {
+  _pendingMeetingURL = url;
+  document.getElementById('lead-modal').style.display = 'flex';
+  document.getElementById('lead-error').style.display = 'none';
+  document.getElementById('lead-form').reset();
+}
+
+function closeLeadModal() {
+  document.getElementById('lead-modal').style.display = 'none';
+}
+
+function skipAndRedirect() {
+  closeLeadModal();
+  window.open(_pendingMeetingURL, '_blank');
+}
+
+function submitLeadForm(e) {
+  e.preventDefault();
+  var btn = document.getElementById('lead-submit-btn');
+  btn.textContent = 'Enviando...';
+  btn.disabled = true;
+
+  var utms = getUTMs();
+  var fields = [
+    { name: 'firstname', value: document.getElementById('lead-firstname').value.trim() },
+    { name: 'lastname',  value: document.getElementById('lead-lastname').value.trim() },
+    { name: 'email',     value: document.getElementById('lead-email').value.trim() }
+  ];
+  var phone = document.getElementById('lead-phone').value.trim();
+  if (phone) fields.push({ name: 'phone', value: phone });
+  ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(function(k) {
+    if (utms[k]) fields.push({ name: k, value: utms[k] });
+  });
+
+  fetch('https://api.hsforms.com/submissions/v3/integration/submit/' + HS_PORTAL_ID + '/' + HS_FORM_ID, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: fields, context: { pageUri: location.href, pageName: document.title } })
+  }).catch(function() {
+    document.getElementById('lead-error').style.display = 'block';
+  }).finally(function() {
+    closeLeadModal();
+    window.open(_pendingMeetingURL, '_blank');
+    btn.textContent = 'Continuar y agendar →';
+    btn.disabled = false;
+  });
 }
 
 var questions = [
