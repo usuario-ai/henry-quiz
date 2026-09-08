@@ -179,18 +179,22 @@ function getUTMs() {
   };
 }
 function buildMeetingURL() {
-  var base = 'https://meetings.hubspot.com/federico104/b2c-sales-campanas?uuid=ae9927fa-ef04-44d3-869e-8aaf39e722a3';
+  /* El CTA va al formulario de agendamiento de HubSpot, no al link de
+     meetings: el formulario pide los datos y desde ahi se elige el horario.
+     Ojo, esta base NO trae query propia, asi que las UTMs se pegan con "?"
+     y no con "&" como la anterior. */
+  var base = 'https://bodcb.share.hsforms.com/2_wgFflgsQx-V4U9gEnLw9g';
   var utms = getUTMs();
   var params = [];
   for (var k in utms) { if (utms[k]) params.push(k + '=' + encodeURIComponent(utms[k])); }
-  return params.length ? base + '&' + params.join('&') : base;
+  return params.length ? base + '?' + params.join('&') : base;
 }
 
 var questions = [
   {
     step: 'Pregunta 1 de 4',
     text: '¿Qué te motiva a dar este paso con Henry?',
-    hint: 'Podés elegir más de una',
+    hint: 'Puedes elegir más de una',
     multi: true,
     hasOtra: true,
     options: [
@@ -219,7 +223,7 @@ var questions = [
   },
   {
     step: 'Pregunta 3 de 4',
-    text: '¿Cuándo querés empezar?',
+    text: '¿Cuándo quieres empezar?',
     hint: '',
     multi: false,
     options: [
